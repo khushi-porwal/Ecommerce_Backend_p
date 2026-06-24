@@ -8,18 +8,47 @@ const razorpay = new Razorpay({
 
 const createPaymentOrder = async(req,res) => {
     try{
-        const {amount} = req.body;
+        const orderId = req.body.orderId;
+        const order = await orderModel.findById(orderId)
 
+        if(!order) {
+            return res.status(404).json({
+                success:false,
+                message:"order not found"
+            })
+        }
+
+        if(order.paymentStatus === "Paid") {
+            return res.status(400).json({
+                success:false,
+                message: "Order is already paid"
+            })
+        }
+
+        const userId = req.user.id;
+        if(order.user.toString() !== userId) {
+            return res.status(403).json({
+                success:false,
+                message: "Unauthorized"
+            })
+        }
         const options = {
-            amount : amount * 100,
+            amount : order.totalAmount* 100,
             currency : "INR"
 
         }
-        const order = await razorpay.orders.create(options);
+        const razorpayOrder = await razorpay.orders.create(options);
+
+        await orderModel.findByIdAndUpdate(
+            orderId,
+            {
+                razorpayOrderId: razorpayOrder.id
+            }
+        );
         return res.status(200).json({
             success:true,
             message:"successfully created",
-            data : order
+            data : razorpayOrder
         })
     } catch(err) {
         console.log(err)
@@ -38,6 +67,13 @@ const verifiedPayment = async(req,res) => {
     razorpay_payment_id,
     razorpay_signature
     } = req.body;
+
+    if(order.paymentStatus === "Paid"){
+    return res.status(400).json({
+        success:false,
+        message:"Order already paid"
+    });
+}
 
         const body = razorpay_order_id + "|" + razorpay_payment_id;
 
@@ -65,7 +101,9 @@ const verifiedPayment = async(req,res) => {
             orderId,
             {
                 paymentStatus: "Paid",
-                paymentId : razorpay_payment_id
+                paymentId : razorpay_payment_id,
+                razorpayOrderId: razorpay_order_id,
+                status: "Processing"
             },
             {
                 new : true

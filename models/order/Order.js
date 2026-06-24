@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 const User = require("../../models/user")
+const Address = require("../../models/address/Address")
 const Product = require("../../models/products/product")
 const orderSchema = new mongoose.Schema({
     user : {
@@ -40,6 +41,14 @@ const orderSchema = new mongoose.Schema({
     },
     paymentId : {
         type: String
+    },
+    razorpayOrderId: {
+        type: String
+    },
+    address: {
+        type: mongoose.Schema.Types.ObjectId,
+        required:true,
+        ref: "Address"
     }
 }, {
     timestamps : true

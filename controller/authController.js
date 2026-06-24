@@ -40,11 +40,12 @@ const signupUser = async(req,res) => {
             data: newUser
         })
     } catch(err) {
-        return res.status(500).json({
-            success : false,
-            message: "Internal Server Error"
-        })
-    }
+    console.log(err);
+    return res.status(500).json({
+        success:false,
+        message:"Internal Server Error"
+    })
+}
     
 }
 

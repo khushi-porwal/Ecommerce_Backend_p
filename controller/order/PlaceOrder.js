@@ -1,6 +1,8 @@
 const cartModel = require("../../models/carts/cart");
 const orderModel = require("../../models/order/Order");
 const userModel = require("../../models/user");
+const AddressModel = require("../../models/address/Address")
+
 
 const placeOrder = async (req,res) => {
     try {
@@ -13,6 +15,21 @@ const placeOrder = async (req,res) => {
             })
         }
         
+        
+        const addressId = req.body.address;
+        const address = await AddressModel.findById(addressId)
+        if(!address) {
+            return res.status(404).json({
+                success:false,
+                message:"Address do not found"
+            })
+        }
+        if(address.user.toString() != userId) {
+            return res.status(403).json({
+                success:false,
+                message:"do not allow"
+            })
+        }
         const cartItems = await cartModel.find({
             
             user : userId
@@ -57,7 +74,8 @@ const placeOrder = async (req,res) => {
             })),
 
             totalAmount,
-            paymentStatus: "Pending"
+            paymentStatus: "Pending",
+            address: addressId
         })
 
         await cartModel.deleteMany({
@@ -85,6 +103,7 @@ const getMyOrder = async (req,res) => {
             user: userId
         })
         .populate("items.product")
+        .populate("address")
         if(orders.length == 0) {
             return res.status(404).json({
                 success: false,

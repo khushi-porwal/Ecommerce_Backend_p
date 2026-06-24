@@ -132,17 +132,23 @@ const getDashboardStats = async(req,res) => {
         const totalOrders = await orderModel.countDocuments();
 
         const revenueResult = await orderModel.aggregate([
-       {
-        $group: {
-            _id: null,
-            totalRevenue: {
-                $sum: "$totalAmount"
+        {
+            $match: {
+                paymentStatus: "Paid"
             }
-        }
+        },
+       {
+
+            $group: {
+                _id: null,
+                totalRevenue: {
+                $sum: "$totalAmount"
+                }
+            }
         }
         ]);
 
-        const totalRevenue = revenueResult.lenght > 0? revenueResult[0].totalRevenue : 0;
+        const totalRevenue = revenueResult.length > 0? revenueResult[0].totalRevenue : 0;
         return res.status(200).json({
             success: true,
             messgae: "suceesfully get Dashboard",

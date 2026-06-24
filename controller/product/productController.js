@@ -1,47 +1,58 @@
 const productModel = require("../../models/products/product")
 
-const createProduct = async(req,res) => {
-    try{
-        const {name,price,description,category,stock,image} = req.body;
-        if(!name || !price || !description || !category || !stock || !image) {
+const createProduct = async (req,res) => {
+    try {
+
+        console.log(req.body)
+        const { name, price, description, category, stock } = req.body;
+
+        if (!name || !price || !description || !category || !stock) {
             return res.status(400).json({
-                message: "All feilds are required"
-            })
+                success: false,
+                message: "All fields are required"
+            });
         }
 
-        const existingProduct = await productModel.findOne({
-            name
-        })
-    if(existingProduct) {
-        return res.status(400).json({
-            message: "Alreaqdy exists"
-        })
-    }
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: "Image is required"
+            });
+        }
 
-    const newProduct = new productModel({
-        name,
-        price,
-        description,
-        category,
-        stock,
-        image
-    })
+        const image = req.file.path;
 
-    await newProduct.save();
+        const existingProduct = await productModel.findOne({ name });
 
-    return res.status(201).json({
-        success: true,
-        message: "successfully created product",
-        product : newProduct
-    })
-    }catch(err) {
-        console.log(err)
+        if (existingProduct) {
+            return res.status(400).json({
+                success: false,
+                message: "Product already exists"
+            });
+        }
+
+        const newProduct = await productModel.create({
+            name,
+            price,
+            description,
+            category,
+            stock,
+            image
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Product created successfully",
+            product: newProduct
+        });
+
+    } catch(err) {
+        console.log(err);
         return res.status(500).json({
             success: false,
-            message : "Something went wrong"
-        })
+            message: err.message
+        });
     }
-    
 }
 
 
@@ -50,7 +61,7 @@ const getAllProduct = async(req,res) => {
     try {
     const search = req.query.search || "";
     const page = Number(req.query.page) || 1;
-    const limit = Number(req.query.limit) || 1;
+    const limit = Number(req.query.limit) || 10;
     const category = req.query.category || "";
     const sort = req.query.sort;
 
@@ -84,7 +95,7 @@ const getAllProduct = async(req,res) => {
 
 
     if(product.length == 0) {
-        return res.status(400).json({
+        return res.status(404).json({
             success:false,
             message:"product is not available"
         })
