@@ -17,6 +17,21 @@ const couponSchema = new mongoose.Schema({
     isActive: {
         type: Boolean,
         default:false
+    },
+    minimumAmount: {
+        type:Number,
+        default: 0
+    },
+    maxDiscount: {
+        type: Number,
+        default: 500
+    },
+    usageLimit:{
+    type:Number
+    },
+    usedCount:{
+    type:Number,
+    default:0
     }
 }, {timestamps : true})
 

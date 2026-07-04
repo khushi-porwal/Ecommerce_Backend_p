@@ -11,7 +11,7 @@ const createCoupon = async(req,res) => {
         }
 
         const existingCoupon = await couponModel.findOne({
-            code
+            code:code.toUpperCase()
         })
 
         if(existingCoupon) {
@@ -21,8 +21,15 @@ const createCoupon = async(req,res) => {
             })
         }
 
+        if(new Date(expiryDate) <= new Date()) {
+            return res.status(400).json({
+                success:false,
+                message: "Expiry date must be in future"
+            })
+        }
+
         const coupon = await couponModel.create({
-            code,
+            code: code.toUpperCase(),
             discountPercentage,
             expiryDate
         })
@@ -41,59 +48,129 @@ const createCoupon = async(req,res) => {
     }
 }
 
-const applyCoupon = async(req,res) => {
+const applyCoupon = async (req, res) => {
     try {
-        const {code,amount} = req.body;
+
+        const { code, amount } = req.body;
+
+        // =========================
+        // Validation
+        // =========================
+
+        if (!code) {
+            return res.status(400).json({
+                success: false,
+                message: "Coupon code is required"
+            });
+        }
+
+        if (!amount || amount <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid order amount"
+            });
+        }
+
+        // =========================
+        // Find Coupon
+        // =========================
+
         const coupon = await couponModel.findOne({
-            code : code
-        })
-        if(!coupon) {
-            return res.status(400).json({
+            code: code.trim().toUpperCase()
+        });
+
+        if (!coupon) {
+            return res.status(404).json({
                 success: false,
-                messgae: "entered coupon do not matched"
-            })
-        }
-        if(amount<=0) {
-            return res.status(400).json({
-                success: false,
-                messgae: "Invalid Amount"
-            })
-        }
-        if(!coupon.isActive) {
-             return res.status(400).json({
-                success: false,
-                messgae: "coupon is not active"
-            })
+                message: "Invalid coupon code"
+            });
         }
 
-        if(new Date() > coupon.expiryDate) {
-             return res.status(400).json({
+        // =========================
+        // Active Check
+        // =========================
+
+        if (!coupon.isActive) {
+            return res.status(400).json({
                 success: false,
-                message: "coupon get expired"
-            })
+                message: "Coupon is inactive"
+            });
         }
 
-        const discountAmount = (amount * coupon.discountPercentage)/100
+        // =========================
+        // Expiry Check
+        // =========================
+
+        if (new Date() > coupon.expiryDate) {
+            return res.status(400).json({
+                success: false,
+                message: "Coupon has expired"
+            });
+        }
+
+        // =========================
+        // Usage Limit Check
+        // =========================
+
+        if (coupon.usedCount >= coupon.usageLimit) {
+            return res.status(400).json({
+                success: false,
+                message: "Coupon usage limit exceeded"
+            });
+        }
+
+        // =========================
+        // Minimum Order Amount
+        // =========================
+
+        if (amount < coupon.minimumAmount) {
+            return res.status(400).json({
+                success: false,
+                message: `Minimum order amount should be ₹${coupon.minimumAmount}`
+            });
+        }
+
+        // =========================
+        // Discount Calculation
+        // =========================
+
+        let discountAmount =
+            (amount * coupon.discountPercentage) / 100;
+
+        discountAmount = Math.min(
+            discountAmount,
+            coupon.maxDiscount
+        );
+
         const finalAmount = amount - discountAmount;
 
+        // =========================
+        // Response
+        // =========================
+
         return res.status(200).json({
-            success:true,
-            message:"successfully applied coupon",
-            originalAmount:amount,
-            discountAmount,
-            finalAmount,
-            couponCode:coupon.code
-        })
+            success: true,
+            message: "Coupon applied successfully",
+            data: {
+                couponCode: coupon.code,
+                originalAmount: amount,
+                discountAmount,
+                finalAmount,
+                discountPercentage: coupon.discountPercentage
+            }
+        });
 
-    } catch(err) {
-        console.log(err)
+    } catch (err) {
+
+        console.log(err);
+
         return res.status(500).json({
-            success:false,
-            message:"something went wrong while applying coupon"
-        })
-    }
-}
+            success: false,
+            message: "Something went wrong while applying coupon"
+        });
 
+    }
+};
 const getAllCoupon = async(req,res) => {
     try {
         const coupon = await couponModel.find()
@@ -149,7 +226,7 @@ const couponUpdate = async(req,res) => {
         const coupon = await couponModel.findById(couponId)
 
         if(!coupon) {
-            return res.status(400).json({
+            return res.status(404).json({
                 success:false,
                 message:"coupon not found"
             })
@@ -169,7 +246,7 @@ const couponUpdate = async(req,res) => {
         return res.status(200).json({
             success:true,
             message:"delete coupon successfully",
-            data:coupon
+            data:updatedCoupon
         })
 
 
