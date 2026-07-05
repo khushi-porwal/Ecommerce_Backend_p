@@ -286,7 +286,7 @@ const cancelOrder = async(req,res) => {
     if(!orderId) {
       return res.status(400).json({
         success:false,
-        message:"orderId not found"
+        message:"order Id not found"
       })
     }
     const order = await orderModel.findById(orderId);
@@ -299,7 +299,7 @@ const cancelOrder = async(req,res) => {
     }
 
     const userId = req.user.id
-    if(order.user.toString() != userId) {
+    if(order.user.toString() !== userId) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized"
@@ -315,9 +315,53 @@ const cancelOrder = async(req,res) => {
     if (order.status === "Cancelled") {
       return res.status(400).json({
         success:false,
-        message: 'order already cancelled'
+        message: 'order is already cancelled'
       })
     }
+
+    for(const item of order.items) {
+      const product = await productModel.findById(item.product);
+
+      if(!product) {
+        return res.status(404).json({
+          success: false,
+          message: "product not found"
+        })
+      }
+      product.stock += item.quantity
+      await product.save()
+    }
+
+    let paymentStatus = order.paymentStatus;
+
+    if (order.paymentStatus === "Paid") {
+        paymentStatus = "Refund Pending";
+    }
+
+    const updateOrder = await orderModel.findByIdAndUpdate(
+      orderId,
+      {
+        status: "Cancelled",
+        paymentStatus
+      },
+
+      {
+        new: true
+      }
+    )
+
+    if (!updateOrder) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    return res.status(200).json({
+    success: true,
+    message: "Order cancelled successfully",
+    data: updateOrder
+    });
   } catch(err) {
     console.log(err)
     return res.status(500).json({

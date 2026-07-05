@@ -35,7 +35,7 @@ const updateOrderStatus = async(req,res) => {
         .populate("items.product")
 
         if(!order) {
-            return res.status(400).json({
+            return res.status(404).json({
                 success: false,
                 message: "order not found"
             })
@@ -57,15 +57,25 @@ const updateOrderStatus = async(req,res) => {
             })
         }
 
-        if(order.status !== "Cancelled" && status === "Cancelled") {
+        const statusFlow = {
+            Pending: ["Processing", "Cancelled"],
+            Processing: ["Shipped", "Cancelled"],
+            Shipped: ["Delivered"],
+            Delivered: [],
+            Cancelled: []
+        };
 
-            for(const item of order.items) {
-
-             item.product.stock += item.quantity;
-
-             await item.product.save();
-            }
-
+        if (!statusFlow[order.status]) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid current order status"
+            });
+        }
+        if(!statusFlow[order.status].includes(status)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid status"
+            })
         }
 
         const updateOrder = await orderModel.findByIdAndUpdate(
@@ -87,7 +97,7 @@ const updateOrderStatus = async(req,res) => {
         
         return res.status(200).json({
             success: true,
-            messgae: "Order successfully updated",
+            message: "Order successfully updated",
             data: updateOrder
         })
     } catch(err) {

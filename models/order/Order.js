@@ -36,7 +36,13 @@ const orderSchema = new mongoose.Schema({
     },
     paymentStatus : {
         type :String,
-        enum:["Pending", "paid"],
+        enum: [
+        "Pending",
+        "Paid",
+        "Failed",
+        "Refund Pending",
+        "Refunded"
+    ],
         default : "Pending"
     },
     paymentId : {
@@ -49,7 +55,38 @@ const orderSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         required:true,
         ref: "Address"
-    }
+    },
+    coupon: {
+        type:String,
+        default: null
+    },
+    paidAt: {
+        type: Date
+    },
+    originalAmount: {
+    type: Number,
+    required: true
+    },
+
+    discountAmount: {
+    type: Number,
+    default: 0
+    },
+    refundedAt: {
+    type: Date
+    },
+    razorpaySignature: {
+        type:String
+    },
+    paymentMethod: {
+    type: String,
+    enum: ["Razorpay", "COD"],
+    default: "Razorpay"
+    },
+
+    refundReason: {
+    type: String
+    },
 }, {
     timestamps : true
 });
