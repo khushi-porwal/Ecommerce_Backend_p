@@ -284,4 +284,5 @@ const paymentFailed = async(req,res)=> {
 module.exports = {
   createPaymentOrder,
   verifiedPayment,
+  paymentFailed
 };

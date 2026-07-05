@@ -279,6 +279,53 @@ const updateOrderStatus = async (req, res) => {
     });
   }
 };
+
+const cancelOrder = async(req,res) => {
+  try{
+    const orderId = req.params.orderId
+    if(!orderId) {
+      return res.status(400).json({
+        success:false,
+        message:"orderId not found"
+      })
+    }
+    const order = await orderModel.findById(orderId);
+
+    if (!order) {
+        return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    const userId = req.user.id
+    if(order.user.toString() != userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized"
+      });
+    }
+    if (order.status === "Delivered") {
+      return res.status(400).json({
+        success: false,
+        message: "Delivered orders cannot be cancelled"
+      });
+    }
+
+    if (order.status === "Cancelled") {
+      return res.status(400).json({
+        success:false,
+        message: 'order already cancelled'
+      })
+    }
+  } catch(err) {
+    console.log(err)
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while cancelling order"
+    })
+  }
+}
 module.exports = {
   placeOrder,
   getMyOrder,
