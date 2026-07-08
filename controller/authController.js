@@ -4,11 +4,11 @@ const bcrypt = require('bcryptjs')
 
 const signupUser = async(req,res) => {
     try {
-        const{name,email,password,role} = req.body;
-        if(!name || !email || !password || !role) {
+        const{name,email,password} = req.body;
+        if(!name || !email || !password) {
             return res.status(400).json({
                 success: false,
-                message : "All feilds are Required"
+                message : "All fields are Required"
             })
         }
         const existingUser = await User.findOne({
@@ -16,7 +16,7 @@ const signupUser = async(req,res) => {
         })
 
         if(existingUser) {
-            return res.status(400).json({
+            return res.status(409).json({
                 success: false,
                 message : "Already Exists User"
             })
@@ -29,7 +29,7 @@ const signupUser = async(req,res) => {
             name,
             email,
             password :  hashedPassword,
-            role
+            
         })
 
         
@@ -37,10 +37,10 @@ const signupUser = async(req,res) => {
         return res.status(201).json({
             success: true,
             message : "User Created Successfully",
-            data: newUser
+            
         })
     } catch(err) {
-    console.log(err);
+    console.error(err);
     return res.status(500).json({
         success:false,
         message:"Internal Server Error"
@@ -51,21 +51,20 @@ const signupUser = async(req,res) => {
 
 
 const loginUser = async (req,res) => {
-    const{email, password} = req.body
+    try{
+        const{email, password} = req.body
     if(!email || !password) {
         return res.status(400).json({
             success : false,
             message : "All feilds are required"
         })
     }
-    const existingUser = await User.findOne({
-        email
-    })
+   const existingUser = await User.findOne({ email }).select("+password");
 
     if(!existingUser) {
-        return res.status(400).json({
+        return res.status(401).json({
             success : false,
-            message : "user is not existing"
+            message : "Invalid email or password"
         })
     }
 
@@ -75,9 +74,9 @@ const loginUser = async (req,res) => {
     )
 
     if(!isMatch) {
-        return res.status(400).json({
+        return res.status(401).json({
             success : false,
-            message: "Password is not match"
+            message: "Invalid email or password"
         })
     }
 
@@ -95,6 +94,13 @@ const loginUser = async (req,res) => {
         message: "successfully login user",
         
     })
+    } catch(err) {
+        console.error(err);
+        return res.status(500).json({
+        success:false,
+        message:"Internal Server Error"
+    })
+    }
 }
 
 const profile = async (req,res) => {
@@ -103,15 +109,20 @@ const profile = async (req,res) => {
         req.user.id
     ).select("-password")
     if(!user) {
-        return res.status(401).json({
+        return res.status(404).json({
             success:false,
             message: "user not found"
         })
     }
     return res.status(200).json({
         success:true,
-        message : "user successfully start",
-        user
+        message:"User profile fetched successfully",
+        user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+    }
     })
     } catch(err) {
         return res.status(500).json({
@@ -127,3 +138,18 @@ module.exports = {
     loginUser,
     profile
 }
+
+
+
+
+
+//Why are you using req.user.id instead of req.params.id?"
+
+
+
+//"The profile API should return the currently 
+// logged-in user's profile. The req.user.id is
+//  added by the authentication middleware after 
+// verifying the JWT token, so the user cannot 
+// access another user's profile simply by changing 
+// the URL."

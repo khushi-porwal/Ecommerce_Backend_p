@@ -1,6 +1,6 @@
+require('dotenv').config();
 const express = require('express')
 const app = express();
-require('dotenv').config();
 const connectDB = require('./config/db')
 const paymentRoutes = require("./routes/payment/paymentRoutes")
 const orderRoutes = require("./routes/order/order")
@@ -10,15 +10,28 @@ const reviewRoutes = require("./routes/review/review")
 const cartRoutes = require("./routes/cart/cartRoutes")
 const productRoutes = require("./routes/product/productRoutes")
 const wishlistRoutes = require("./routes/wishlist/wishlistRoutes")
+const cors = require("cors")
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit")
 
+app.use(helmet())
+app.use(cors({
+    origin:process.env.CLIENT_URL,
+    credentials: true
+}))
 app.use(express.json())
 
 app.use(express.urlencoded({
     extended : true
 }))
 
-connectDB();
+const limiter = rateLimit({
+    windowMs:15*60*1000,
+    max:100
+});
 
+
+app.use(limiter)
 app.use(authRoutes)
 app.use(productRoutes)
 app.use(cartRoutes)
@@ -27,20 +40,42 @@ app.use(reviewRoutes)
 app.use(adminRoutes)
 app.use(wishlistRoutes)
 app.use(paymentRoutes)
-app.get("/", (req,res) => {
-    res.send("Hello World")
+
+
+app.get("/health", (req,res) => {
+    res.status(200).json({
+        success:true,
+        message:"Server is running"
+    })
 })
+
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        message: "Route Not Found"
+    });
+});
 
 app.use((err, req, res, next) => {
     console.dir(err, { depth: null });
 
-    res.status(500).json({
+    res.status(err.statusCode || 500).json({
         success: false,
-        message: err.message
+        message: err.message || "Internal Server Error"
     });
 });
+const PORT = process.env.PORT||3000;
+async function startServer() {
+    try {
+        await connectDB();
 
-const port = 3000;
-app.listen(port, ()=> {
-    console.log(`Server is running on the port ${port}`)
-})
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error("Database connection failed:", error);
+        process.exit(1);
+    }
+}
+
+startServer();
